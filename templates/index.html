@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support CRM Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <h1 class="text-2xl font-semibold text-gray-800">Customer Support CRM</h1>
+      <p class="text-sm text-gray-500">Manage support tickets</p>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Create Ticket Form -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">New Ticket</h2>
+
+          <form id="ticket-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+              <input type="text" id="customer_name" required
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Customer Email</label>
+              <input type="email" id="customer_email" required
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <input type="text" id="subject" required
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea id="description" rows="4"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <button type="submit"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md text-sm transition-colors">
+              Create Ticket
+            </button>
+
+            <p id="form-message" class="text-sm hidden"></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right: Tickets Table -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Tickets</h2>
+            <button id="refresh-btn"
+              class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+              Refresh
+            </button>
+          </div>
+
+          <!-- Filters -->
+          <div class="flex flex-col sm:flex-row gap-3 mb-4">
+            <input type="text" id="filter-name" placeholder="Search by customer name..."
+              class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="filter-status"
+              class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Statuses</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-left text-gray-500">
+                  <th class="py-2 pr-4 font-medium">Ticket ID</th>
+                  <th class="py-2 pr-4 font-medium">Customer</th>
+                  <th class="py-2 pr-4 font-medium">Subject</th>
+                  <th class="py-2 pr-4 font-medium">Status</th>
+                  <th class="py-2 pr-4 font-medium">Created</th>
+                  <th class="py-2 pr-4 font-medium">Update</th>
+                </tr>
+              </thead>
+              <tbody id="tickets-tbody" class="divide-y divide-gray-100">
+                <!-- Rows injected by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <p id="empty-state" class="text-sm text-gray-400 text-center py-8 hidden">
+            No tickets found.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = "/api/tickets";
+
+    const tbody = document.getElementById("tickets-tbody");
+    const emptyState = document.getElementById("empty-state");
+    const form = document.getElementById("ticket-form");
+    const formMessage = document.getElementById("form-message");
+    const filterName = document.getElementById("filter-name");
+    const filterStatus = document.getElementById("filter-status");
+    const refreshBtn = document.getElementById("refresh-btn");
+
+    const STATUS_COLORS = {
+      "Open": "bg-yellow-100 text-yellow-800",
+      "In Progress": "bg-blue-100 text-blue-800",
+      "Closed": "bg-green-100 text-green-800",
+    };
+
+    function statusBadge(status) {
+      const cls = STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
+      return `<span class="px-2 py-1 rounded-full text-xs font-medium ${cls}">${status}</span>`;
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr.replace(" ", "T"));
+      if (isNaN(d)) return dateStr;
+      return d.toLocaleString();
+    }
+
+    // ---------------------------------------------------------------
+    // Fetch and render tickets
+    // ---------------------------------------------------------------
+    async function loadTickets() {
+      const params = new URLSearchParams();
+      if (filterName.value.trim()) params.set("customer_name", filterName.value.trim());
+      if (filterStatus.value) params.set("status", filterStatus.value);
+
+      const url = params.toString() ? `${API_BASE}?${params.toString()}` : API_BASE;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch tickets (${res.status})`);
+        const tickets = await res.json();
+        renderTickets(tickets);
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = "";
+        emptyState.textContent = "Could not load tickets. Is the API running?";
+        emptyState.classList.remove("hidden");
+      }
+    }
+
+    function renderTickets(tickets) {
+      tbody.innerHTML = "";
+
+      if (!tickets || tickets.length === 0) {
+        emptyState.textContent = "No tickets found.";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+
+      tickets.forEach((ticket) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50";
+        tr.innerHTML = `
+          <td class="py-3 pr-4 font-mono text-gray-700">${ticket.ticket_id}</td>
+          <td class="py-3 pr-4">
+            <div class="text-gray-800 font-medium">${escapeHtml(ticket.customer_name)}</div>
+            <div class="text-gray-400 text-xs">${escapeHtml(ticket.customer_email)}</div>
+          </td>
+          <td class="py-3 pr-4 text-gray-700">${escapeHtml(ticket.subject)}</td>
+          <td class="py-3 pr-4">${statusBadge(ticket.status)}</td>
+          <td class="py-3 pr-4 text-gray-500 text-xs">${formatDate(ticket.created_at)}</td>
+          <td class="py-3 pr-4">
+            <select data-ticket-id="${ticket.ticket_id}"
+              class="status-select rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="Open" ${ticket.status === "Open" ? "selected" : ""}>Open</option>
+              <option value="In Progress" ${ticket.status === "In Progress" ? "selected" : ""}>In Progress</option>
+              <option value="Closed" ${ticket.status === "Closed" ? "selected" : ""}>Closed</option>
+            </select>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Wire up status dropdowns
+      document.querySelectorAll(".status-select").forEach((select) => {
+        select.addEventListener("change", async (e) => {
+          const ticketId = e.target.getAttribute("data-ticket-id");
+          const newStatus = e.target.value;
+          await updateTicketStatus(ticketId, newStatus);
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ---------------------------------------------------------------
+    // Update ticket status (PUT)
+    // ---------------------------------------------------------------
+    async function updateTicketStatus(ticketId, status) {
+      try {
+        const res = await fetch(`${API_BASE}/${ticketId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+        if (!res.ok) throw new Error(`Failed to update ticket (${res.status})`);
+        await loadTickets();
+      } catch (err) {
+        console.error(err);
+        alert("Could not update ticket status.");
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Create ticket (POST) - form submission
+    // ---------------------------------------------------------------
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        customer_name: document.getElementById("customer_name").value.trim(),
+        customer_email: document.getElementById("customer_email").value.trim(),
+        subject: document.getElementById("subject").value.trim(),
+        description: document.getElementById("description").value.trim(),
+      };
+
+      const submitBtn = form.querySelector("button[type=submit]");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating...";
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Failed to create ticket (${res.status})`);
+        }
+
+        const data = await res.json();
+
+        formMessage.textContent = `Ticket created: ${data.ticket_id}`;
+        formMessage.className = "text-sm text-green-600";
+        formMessage.classList.remove("hidden");
+
+        form.reset();
+        await loadTickets();
+      } catch (err) {
+        console.error(err);
+        formMessage.textContent = err.message || "Failed to create ticket.";
+        formMessage.className = "text-sm text-red-600";
+        formMessage.classList.remove("hidden");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Create Ticket";
+        setTimeout(() => formMessage.classList.add("hidden"), 4000);
+      }
+    });
+
+    // ---------------------------------------------------------------
+    // Filters & refresh
+    // ---------------------------------------------------------------
+    refreshBtn.addEventListener("click", loadTickets);
+    filterStatus.addEventListener("change", loadTickets);
+
+    let searchTimeout;
+    filterName.addEventListener("input", () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadTickets, 300);
+    });
+
+    // Initial load
+    loadTickets();
+  </script>
+
+</body>
+</html>
