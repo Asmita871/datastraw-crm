@@ -72,7 +72,7 @@
 
           <!-- Filters -->
           <div class="flex flex-col sm:flex-row gap-3 mb-4">
-            <input type="text" id="filter-name" placeholder="Search by customer name..."
+            <input type="text" id="filter-search" placeholder="Search across ID, name, email, or description..."
               class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <select id="filter-status"
               class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -90,6 +90,7 @@
                   <th class="py-2 pr-4 font-medium">Ticket ID</th>
                   <th class="py-2 pr-4 font-medium">Customer</th>
                   <th class="py-2 pr-4 font-medium">Subject</th>
+                  <th class="py-2 pr-4 font-medium w-48">Notes</th> <!-- Added Notes Header -->
                   <th class="py-2 pr-4 font-medium">Status</th>
                   <th class="py-2 pr-4 font-medium">Created</th>
                   <th class="py-2 pr-4 font-medium">Update</th>
@@ -117,7 +118,7 @@
     const emptyState = document.getElementById("empty-state");
     const form = document.getElementById("ticket-form");
     const formMessage = document.getElementById("form-message");
-    const filterName = document.getElementById("filter-name");
+    const filterSearch = document.getElementById("filter-search");
     const filterStatus = document.getElementById("filter-status");
     const refreshBtn = document.getElementById("refresh-btn");
 
@@ -133,9 +134,8 @@
     }
 
     function formatDate(dateStr) {
-      const d = new Date(dateStr.replace(" ", "T"));
-      if (isNaN(d)) return dateStr;
-      return d.toLocaleString();
+      // Simple display since the backend now provides clean IST strings
+      return dateStr;
     }
 
     // ---------------------------------------------------------------
@@ -143,7 +143,8 @@
     // ---------------------------------------------------------------
     async function loadTickets() {
       const params = new URLSearchParams();
-      if (filterName.value.trim()) params.set("customer_name", filterName.value.trim());
+      // Changed to 'search' to match new backend logic
+      if (filterSearch.value.trim()) params.set("search", filterSearch.value.trim());
       if (filterStatus.value) params.set("status", filterStatus.value);
 
       const url = params.toString() ? `${API_BASE}?${params.toString()}` : API_BASE;
@@ -182,10 +183,18 @@
             <div class="text-gray-400 text-xs">${escapeHtml(ticket.customer_email)}</div>
           </td>
           <td class="py-3 pr-4 text-gray-700">${escapeHtml(ticket.subject)}</td>
-          <td class="py-3 pr-4">${statusBadge(ticket.status)}</td>
-          <td class="py-3 pr-4 text-gray-500 text-xs">${formatDate(ticket.created_at)}</td>
+          
+          <!-- New Notes Input Cell -->
           <td class="py-3 pr-4">
-            <select data-ticket-id="${ticket.ticket_id}"
+            <input type="text" id="note-${ticket.ticket_id}" data-ticket-id="${ticket.ticket_id}" 
+                   value="${escapeHtml(ticket.notes || '')}" placeholder="Add a note..." 
+                   class="note-input w-full rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </td>
+
+          <td class="py-3 pr-4">${statusBadge(ticket.status)}</td>
+          <td class="py-3 pr-4 text-gray-500 text-xs whitespace-nowrap">${formatDate(ticket.created_at)}</td>
+          <td class="py-3 pr-4">
+            <select data-ticket-id="${ticket.ticket_id}" id="status-${ticket.ticket_id}"
               class="status-select rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="Open" ${ticket.status === "Open" ? "selected" : ""}>Open</option>
               <option value="In Progress" ${ticket.status === "In Progress" ? "selected" : ""}>In Progress</option>
@@ -196,12 +205,21 @@
         tbody.appendChild(tr);
       });
 
-      // Wire up status dropdowns
+      // Wire up status dropdowns to trigger update
       document.querySelectorAll(".status-select").forEach((select) => {
         select.addEventListener("change", async (e) => {
           const ticketId = e.target.getAttribute("data-ticket-id");
           const newStatus = e.target.value;
           await updateTicketStatus(ticketId, newStatus);
+        });
+      });
+
+      // Wire up note inputs to save on enter/click away
+      document.querySelectorAll(".note-input").forEach((input) => {
+        input.addEventListener("change", async (e) => {
+          const ticketId = e.target.getAttribute("data-ticket-id");
+          const currentStatus = document.getElementById(`status-${ticketId}`).value;
+          await updateTicketStatus(ticketId, currentStatus);
         });
       });
     }
@@ -214,20 +232,28 @@
     }
 
     // ---------------------------------------------------------------
-    // Update ticket status (PUT)
+    // Update ticket status & notes (PUT)
     // ---------------------------------------------------------------
     async function updateTicketStatus(ticketId, status) {
+      const noteValue = document.getElementById(`note-${ticketId}`).value;
+      
       try {
         const res = await fetch(`${API_BASE}/${ticketId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status: status, notes: noteValue }),
         });
         if (!res.ok) throw new Error(`Failed to update ticket (${res.status})`);
+        
+        // Show subtle success indicator and reload
+        const noteInput = document.getElementById(`note-${ticketId}`);
+        noteInput.classList.add('bg-green-50');
+        setTimeout(() => noteInput.classList.remove('bg-green-50'), 1000);
+        
         await loadTickets();
       } catch (err) {
         console.error(err);
-        alert("Could not update ticket status.");
+        alert("Could not update ticket.");
       }
     }
 
@@ -263,7 +289,7 @@
         const data = await res.json();
 
         formMessage.textContent = `Ticket created: ${data.ticket_id}`;
-        formMessage.className = "text-sm text-green-600";
+        formMessage.className = "text-sm text-green-600 font-medium";
         formMessage.classList.remove("hidden");
 
         form.reset();
@@ -287,7 +313,7 @@
     filterStatus.addEventListener("change", loadTickets);
 
     let searchTimeout;
-    filterName.addEventListener("input", () => {
+    filterSearch.addEventListener("input", () => {
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(loadTickets, 300);
     });
