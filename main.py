@@ -38,7 +38,7 @@ class TicketCreate(BaseModel):
 
 class TicketStatusUpdate(BaseModel):
     status: str
-
+    notes: Optional[str] = None # Added notes field
 
 class TicketOut(BaseModel):
     id: int
@@ -48,6 +48,7 @@ class TicketOut(BaseModel):
     subject: str
     description: Optional[str]
     status: str
+    notes: Optional[str] = None # Added notes field
     created_at: str
 
 
@@ -112,7 +113,7 @@ def create_ticket(payload: TicketCreate):
 @app.get("/api/tickets", response_model=List[TicketOut])
 def list_tickets(
     status: Optional[str] = Query(None, description="Filter by exact status"),
-    customer_name: Optional[str] = Query(None, description="Search by customer name (partial match)"),
+    search: Optional[str] = Query(None, description="Search across ID, name, email, or description"),
 ):
     query = "SELECT * FROM tickets WHERE 1=1"
     params = []
@@ -121,9 +122,10 @@ def list_tickets(
         query += " AND status = ?"
         params.append(status)
 
-    if customer_name:
-        query += " AND customer_name LIKE ?"
-        params.append(f"%{customer_name}%")
+    if search:
+        # Searches across name, ID, email, and description
+        query += " AND (customer_name LIKE ? OR ticket_id LIKE ? OR customer_email LIKE ? OR description LIKE ?)"
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
 
     query += " ORDER BY created_at DESC"
 
@@ -162,15 +164,18 @@ def update_ticket_status(ticket_id: str, payload: TicketStatusUpdate):
 
     with get_connection() as conn:
         existing = conn.execute(
-            "SELECT 1 FROM tickets WHERE ticket_id = ?", (ticket_id,)
+            "SELECT * FROM tickets WHERE ticket_id = ?", (ticket_id,)
         ).fetchone()
 
         if not existing:
             raise HTTPException(status_code=404, detail=f"Ticket '{ticket_id}' not found")
 
+        # Update status and notes (if new notes are provided)
+        new_notes = payload.notes if payload.notes else existing["notes"]
+        
         conn.execute(
-            "UPDATE tickets SET status = ? WHERE ticket_id = ?",
-            (payload.status, ticket_id),
+            "UPDATE tickets SET status = ?, notes = ? WHERE ticket_id = ?",
+            (payload.status, new_notes, ticket_id),
         )
 
         row = conn.execute(
