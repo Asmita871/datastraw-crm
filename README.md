@@ -58,8 +58,3 @@ Open your web browser and navigate to `[http://127.0.0.1:8000/](http://127.0.0.1
 
 To ensure a stable, on-time deployment for the MVP, the architecture was kept intentionally streamlined, focusing on the core CRUD pipeline (Create, List, Update, Filter). The frontend is served directly from the FastAPI backend using `StaticFiles` and `FileResponse` to eliminate cross-origin resource sharing (CORS) overhead and simplify deployment.
 
-```
-
-Save that, run your three `git` commands (`git add .`, `git commit -m "Update README"`, `git push origin main`), and check your GitHub link. You will see how clean it looks once GitHub renders it!
-
-```
