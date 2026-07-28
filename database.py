@@ -1,10 +1,8 @@
-# database.py
-
 import sqlite3
 from contextlib import contextmanager
 
-DATABASE_NAME = "support_crm.db"
-
+# Updated database name to force Render to create a fresh file with the notes column
+DATABASE_NAME = "support_crm_v2.db"
 
 @contextmanager
 def get_connection():
@@ -42,7 +40,7 @@ def init_db():
         description TEXT,
         status TEXT NOT NULL DEFAULT 'Open',
         notes TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT NOT NULL
     );
     """
 
