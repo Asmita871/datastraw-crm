@@ -41,6 +41,7 @@ def init_db():
         subject TEXT NOT NULL,
         description TEXT,
         status TEXT NOT NULL DEFAULT 'Open',
+        notes TEXT,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     """
