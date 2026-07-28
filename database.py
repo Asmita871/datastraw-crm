@@ -1,8 +1,8 @@
 import sqlite3
 from contextlib import contextmanager
 
-# Updated database name to force Render to create a fresh file with the notes column
-DATABASE_NAME = "support_crm_v2.db"
+# Bumped to v3 to generate the final, perfect database
+DATABASE_NAME = "support_crm_v3.db"
 
 @contextmanager
 def get_connection():
@@ -13,7 +13,7 @@ def get_connection():
     """
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
-    # Enforce foreign key constraints (good practice even if unused now)
+    # Enforce foreign key constraints
     conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
@@ -23,7 +23,6 @@ def get_connection():
         raise
     finally:
         conn.close()
-
 
 def init_db():
     """
@@ -40,7 +39,7 @@ def init_db():
         description TEXT,
         status TEXT NOT NULL DEFAULT 'Open',
         notes TEXT,
-        created_at TEXT NOT NULL
+        created_at TIMESTAMP DEFAULT (DATETIME('now', '+5 hours', '+30 minutes'))
     );
     """
 
@@ -49,7 +48,5 @@ def init_db():
 
     print(f"Database initialized successfully at '{DATABASE_NAME}'")
 
-
 if __name__ == "__main__":
-    # Allows running `python database.py` directly to set up the DB
     init_db()
