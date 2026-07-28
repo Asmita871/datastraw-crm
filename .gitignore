@@ -1,0 +1,14 @@
+# Python environment files
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Database 
+# (Note: For this assessment, you can leave the SQLite DB out of version control)
+*.db
+*.sqlite3
