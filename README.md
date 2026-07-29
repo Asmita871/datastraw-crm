@@ -7,7 +7,6 @@ A full-stack web application built for the Datastraw Engineering Assessment. Thi
 
 ## Live Demo
 * **Web Application:** https://datastraw-crm-2zri.onrender.com
-* **Video Walkthrough:** [Insert your Loom/YouTube URL here]
 
 ## Core Features
 * **Create Tickets:** Add new support tickets with auto-generated unique IDs.
