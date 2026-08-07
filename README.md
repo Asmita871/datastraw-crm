@@ -22,7 +22,7 @@ A full-stack web application built for the Datastraw Engineering Assessment. Thi
 
 1. **Clone the repository:**
 ```bash
-git clone [https://github.com/Asmita871/datastraw-crm.git](https://github.com/Asmita871/datastraw-crm.git)
+git clone https://github.com/Asmita871/datastraw-crm.git
 cd datastraw-crm
 ```
 
