@@ -1,6 +1,3 @@
-
-
-```markdown
 # Datastraw Customer Support CRM System
 
 A full-stack web application built for the Datastraw Engineering Assessment. This lightweight CRM system allows teams to manage customer support tickets efficiently.
@@ -25,10 +22,9 @@ A full-stack web application built for the Datastraw Engineering Assessment. Thi
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/Asmita871/datastraw-crm.git
+git clone [https://github.com/Asmita871/datastraw-crm.git](https://github.com/Asmita871/datastraw-crm.git)
 cd datastraw-crm
 
-```
 
 2. **Create and activate a virtual environment:**
 
