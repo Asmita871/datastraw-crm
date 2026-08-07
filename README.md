@@ -58,8 +58,12 @@ uvicorn main:app --reload
 ```
 
 5. **Access the Dashboard:**
-Open your web browser and navigate to [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+Open your web browser and navigate to http://127.0.0.1:8000/.
 
 ## Architecture Note
 
 To ensure a stable, on-time deployment for the MVP, the architecture was kept intentionally streamlined, focusing on a core CRUD pipeline. The frontend is served directly from the FastAPI backend using `StaticFiles` to eliminate cross-origin resource sharing (CORS) overhead and simplify deployment. Data is managed via a lightweight SQLite database equipped with built-in timezone conversion to ensure reliable timestamps regardless of the hosting server's default configuration.
+
+```
+
+```
